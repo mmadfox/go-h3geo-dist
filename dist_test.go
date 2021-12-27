@@ -2,10 +2,62 @@ package h3geodist
 
 import (
 	"fmt"
+	"math/rand"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/uber/h3-go/v3"
 )
+
+func TestDistributed_AddRemove(t *testing.T) {
+	t.Skip()
+	level1cells := []uint64{
+		uint64(h3.FromString("81823ffffffffff")),
+		uint64(h3.FromString("8182bffffffffff")),
+	}
+	hosts := []string{
+		"host-1.com",
+		"host-2.com",
+		"host-3.com",
+	}
+	h3dist, err := New(Level1, DefaultVNodes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rand.Seed(time.Now().UnixNano())
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	const addOp = 0
+	const removeOp = 1
+	go func() {
+		defer wg.Done()
+		var index int
+		for i := 0; i < 100; i++ {
+			host := hosts[index%len(hosts)]
+			switch rand.Intn(3) {
+			case addOp:
+				h3dist.Add(host)
+			case removeOp:
+				h3dist.Remove(host)
+			}
+			index++
+			time.Sleep(15 * time.Millisecond)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 1300; i++ {
+			cell := level1cells[i%2]
+			host, ok := h3dist.Lookup(cell)
+			t.Logf("cell=%d, host=%s, found=%v\n", uint64(cell), host, ok)
+			time.Sleep(5 * time.Millisecond)
+		}
+	}()
+	wg.Wait()
+}
 
 func TestDistributed_Remove(t *testing.T) {
 	dist := Default()
