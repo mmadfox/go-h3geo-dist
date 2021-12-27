@@ -1,18 +1,3 @@
-# H3-geo distributed cells 
-
-Distribution of uber H3geo cells by nodes
-
-Install
--------
-With a correctly configured Go env:
-
-```
-go get github.com/mmadfox/go-h3geo-dist
-```
-
-Examples
---------
-```go
 package main
 
 import (
@@ -40,4 +25,3 @@ func main() {
 		log.Printf("cell=%d, host=%s, found=%v\n", uint64(cell), host, ok)
 	})
 }
-```
