@@ -13,9 +13,48 @@ func newrrw() *rrw {
 	return &rrw{nodes: make([]*node, 0, 8)}
 }
 
-func (r *rrw) add(addr string, weight int) {
+func (r *rrw) exist(addr string) (ok bool) {
+	for i := 0; i < len(r.nodes); i++ {
+		if addr == r.nodes[i].addr {
+			ok = true
+			break
+		}
+	}
+	return
+}
+
+func (r *rrw) addrAt(index int) string {
+	return r.nodes[index].addr
+}
+
+func (r *rrw) remove(addr string) (ok bool) {
+	for i := 0; i < len(r.nodes); i++ {
+		if addr == r.nodes[i].addr {
+			ok = true
+			r.nodes = append(r.nodes[:i], r.nodes[i+1:]...)
+			if r.cnt > 0 {
+				r.cnt--
+			}
+			break
+		}
+	}
+	if len(r.nodes) == 0 {
+		r.nodes = r.nodes[:0]
+		r.cnt = 0
+		r.gcd = 0
+		r.maxw = 0
+		r.index = -1
+		r.cw = 0
+	}
+	return
+}
+
+func (r *rrw) add(addr string, weight int) (ok bool) {
 	if weight <= 0 {
 		weight = 1
+	}
+	if r.exist(addr) {
+		return
 	}
 	n := &node{addr: addr, weight: weight}
 	if r.gcd > 0 {
@@ -31,6 +70,8 @@ func (r *rrw) add(addr string, weight int) {
 	}
 	r.nodes = append(r.nodes, n)
 	r.cnt++
+	ok = true
+	return
 }
 
 func (r *rrw) size() int {

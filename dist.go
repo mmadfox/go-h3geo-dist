@@ -60,25 +60,49 @@ func New(cellLevel int, vNodes int) (*Distributed, error) {
 func (d *Distributed) Add(addr string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.nodes.add(addr, 1)
+	if !d.nodes.add(addr, 1) {
+		return
+	}
 	d.distribute()
 }
 
 func (d *Distributed) AddWithWeight(addr string, weight int) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.nodes.add(addr, weight)
+	if !d.nodes.add(addr, weight) {
+		return
+	}
 	d.distribute()
 }
 
 func (d *Distributed) Remove(addr string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if !d.nodes.remove(addr) {
+		return
+	}
+	d.nodes.reset()
+	d.distribute()
+}
 
+func (d *Distributed) Nodes() []string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	nodes := make([]string, 0, d.nodes.size())
+	for i := 0; i < d.nodes.size(); i++ {
+		nodes = append(nodes, d.nodes.addrAt(i))
+	}
+	return nodes
 }
 
 func (d *Distributed) Lookup(cell uint64) (addr string, ok bool) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
 	if len(d.spans) == 0 {
 		return
 	}
+
 	for i := 0; i < len(d.spans); i++ {
 		if cell >= d.spans[i].start && cell < d.spans[i].end {
 			addr = d.spans[i].host.addr
@@ -90,8 +114,11 @@ func (d *Distributed) Lookup(cell uint64) (addr string, ok bool) {
 }
 
 func (d *Distributed) distribute() {
-	ring := d.fillspans()
 	d.spans = make([]span, 0, d.vNodes)
+	if d.nodes.size() == 0 {
+		return
+	}
+	ring := d.fillspans()
 	var end, start uint64
 	for i := 0; i < len(ring); i++ {
 		start = ring[i]

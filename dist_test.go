@@ -7,6 +7,27 @@ import (
 	"github.com/uber/h3-go/v3"
 )
 
+func TestDistributed_Remove(t *testing.T) {
+	dist := Default()
+	dist.Add("host-1.com")
+	dist.Add("host-2.com")
+	dist.Add("host-3.com")
+	dist.Add("host-4.com")
+	nodes := dist.Nodes()
+	if have, want := len(nodes), 4; have != want {
+		t.Fatalf("have %d, want %d", have, want)
+	}
+
+	dist.Remove("host-1.com")
+	dist.Remove("host-2.com")
+	dist.Remove("host-3.com")
+	dist.Remove("host-4.com")
+	nodes = dist.Nodes()
+	if have, want := len(nodes), 0; have != want {
+		t.Fatalf("have %d, want %d", have, want)
+	}
+}
+
 func TestDistributed_Lookup(t *testing.T) {
 	dist, _ := New(Level1, 9)
 	dist.Add("host-1.com")
