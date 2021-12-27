@@ -7,6 +7,32 @@ import (
 	"github.com/uber/h3-go/v3"
 )
 
+func TestDistributed_Lookup(t *testing.T) {
+	dist, _ := New(Level1, 9)
+	dist.Add("host-1.com")
+	dist.Add("host-2.com")
+	dist.Add("host-3.com")
+	dist.Add("host-4.com")
+	level1Cells := []h3.H3Index{
+		h3.FromString("8182bffffffffff"),
+		h3.FromString("8158bffffffffff"),
+		h3.FromString("81827ffffffffff"),
+		h3.FromString("81547ffffffffff"),
+		h3.FromString("817cfffffffffff"),
+	}
+	var found int
+	for i := 0; i < len(level1Cells); i++ {
+		host, ok := dist.Lookup(uint64(level1Cells[i]))
+		t.Logf("host=%s, found=%v", host, ok)
+		if ok {
+			found++
+		}
+	}
+	if have, want := len(level1Cells), found; have != want {
+		t.Fatalf("have %d, want %d ", have, want)
+	}
+}
+
 func TestDistributed_DynamicAddWithWeight(t *testing.T) {
 	dist := Default()
 	loop := 6

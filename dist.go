@@ -46,6 +46,9 @@ func New(cellLevel int, vNodes int) (*Distributed, error) {
 	if vNodes < 3 {
 		vNodes = 3
 	}
+	if vNodes > 512 {
+		vNodes = 512
+	}
 	return &Distributed{
 		nodes:    newrrw(),
 		level:    cellLevel,
