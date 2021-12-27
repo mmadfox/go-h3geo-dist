@@ -39,7 +39,7 @@ func Default() *Distributed {
 }
 
 func New(cellLevel int, vNodes int) (*Distributed, error) {
-	if cellLevel < Level0 && cellLevel > Level6 {
+	if ok := validateLevel(cellLevel); !ok {
 		return nil, fmt.Errorf("h3geodist: unknown level - got %d, expected [%d-%d]",
 			cellLevel, Level0, Level6)
 	}
