@@ -66,6 +66,20 @@ func (d *Distributed) IsEmpty() bool {
 	return len(d.nodes) == 0
 }
 
+func (d *Distributed) NumReplica() int {
+	return d.replFactor
+}
+
+func (d *Distributed) Stats() map[string]float64 {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	stats := make(map[string]float64)
+	for member, load := range d.stats {
+		stats[member] = load
+	}
+	return stats
+}
+
 func (d *Distributed) VNodes() uint64 {
 	return d.vnodes
 }
@@ -103,6 +117,52 @@ func (d *Distributed) IsOwned(c Cell) bool {
 	return addr == c.Host
 }
 
+func (d *Distributed) ReplicaFor(cell h3.H3Index, n int) ([]string, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	if n > len(d.nodes) {
+		return nil, fmt.Errorf("h3geodist: insufficient number of nodes want %d, have %d",
+			n, len(d.nodes))
+	}
+
+	var mykey uint64
+	var next int
+	myaddr, ok := d.lookup(cell)
+	if !ok {
+		return nil, fmt.Errorf("h3geodist: vnode for cell %v not found", cell)
+	}
+	keys := make([]uint64, 0, 4)
+	hosts := make(map[uint64]*node)
+	for i := 0; i < len(d.nodes); i++ {
+		hk := str2hash(d.nodes[i].addr)
+		if d.nodes[i].addr == myaddr {
+			mykey = hk
+		}
+		hosts[hk] = d.nodes[i]
+		keys = append(keys, hk)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	res := make([]string, 0, 4)
+	for next < len(keys) {
+		if keys[next] == mykey {
+			res = append(res, hosts[keys[next]].addr)
+			break
+		}
+		next++
+	}
+	for len(res) < n {
+		next++
+		if next >= len(keys) {
+			next = 0
+		}
+		res = append(res, hosts[keys[next]].addr)
+	}
+	return res, nil
+}
+
 func (d *Distributed) LookupMany(cell []h3.H3Index, iter func(c Cell) bool) bool {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
@@ -119,6 +179,11 @@ func (d *Distributed) LookupMany(cell []h3.H3Index, iter func(c Cell) bool) bool
 		}
 	}
 	return true
+}
+
+func (d *Distributed) VNodeIndex(cell h3.H3Index) int {
+	hashKey := uint2hash(uint64(cell))
+	return int(hashKey % d.vnodes)
 }
 
 func (d *Distributed) EachCell(iter func(c Cell)) {

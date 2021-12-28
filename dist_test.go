@@ -148,6 +148,26 @@ func TestDistributed_IsOwned(t *testing.T) {
 	}
 }
 
+func TestDistributed_ReplicaFor(t *testing.T) {
+	h3dist, _ := New(Level1, WithVNodes(256))
+	_ = h3dist.Add("127.0.0.1")
+	_ = h3dist.Add("127.0.0.2")
+	_ = h3dist.Add("127.0.0.3")
+	_ = h3dist.Add("127.0.0.4")
+	cell := h3.FromString("821fa7fffffffff")
+	hosts, err := h3dist.ReplicaFor(cell, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if have, want := len(hosts), 2; have != want {
+		t.Fatalf("have %d, want %d", have, want)
+	}
+	_, err = h3dist.ReplicaFor(cell, 10)
+	if err == nil {
+		t.Fatalf("have nil, want error")
+	}
+}
+
 func TestDefault(t *testing.T) {
 	h3dist, _ := New(Level1, WithVNodes(3))
 
