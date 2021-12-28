@@ -137,3 +137,34 @@ func TestDistributed_EachCell(t *testing.T) {
 		t.Fatalf("have %d, want %d num of cell", have, want)
 	}
 }
+
+func TestDefault(t *testing.T) {
+	h3dist, _ := New(Level1, WithVNodes(3))
+
+	want := h3.FromString("821fa7fffffffff")
+
+	if err := h3dist.Add("127.0.0.1"); err != nil {
+		t.Fatal(err)
+	}
+
+	dcell, ok := h3dist.Lookup(want)
+	if ok {
+		t.Logf("h3dist.Lookup(%v) => %s, %v", want, dcell.Host, ok)
+	}
+
+	if err := h3dist.Add("127.0.0.2"); err != nil {
+		t.Fatal(err)
+	}
+	h3dist.Remove("127.0.0.1")
+
+	dcell, ok = h3dist.Lookup(want)
+	if ok {
+		t.Logf("h3dist.Lookup(%v) => %s, %v", want, dcell.Host, ok)
+	}
+	h3dist.Remove("127.0.0.1")
+	h3dist.Remove("127.0.0.2")
+	dcell, ok = h3dist.Lookup(want)
+	if !ok {
+		t.Logf("h3dist.Lookup(%v) => %v", want, ok)
+	}
+}

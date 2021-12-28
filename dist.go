@@ -60,6 +60,12 @@ func New(cellLevel int, opts ...Option) (*Distributed, error) {
 	return h3dist, nil
 }
 
+func (d *Distributed) IsEmpty() bool {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return len(d.nodes) == 0
+}
+
 func (d *Distributed) VNodes() uint64 {
 	return d.vnodes
 }
