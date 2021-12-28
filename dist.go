@@ -93,6 +93,16 @@ func (d *Distributed) Lookup(cell h3.H3Index) (Cell, bool) {
 	return Cell{H3ID: cell, Host: addr}, true
 }
 
+func (d *Distributed) IsOwned(c Cell) bool {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	addr, ok := d.lookup(c.H3ID)
+	if !ok {
+		return false
+	}
+	return addr == c.Host
+}
+
 func (d *Distributed) LookupMany(cell []h3.H3Index, iter func(c Cell) bool) bool {
 	d.mu.RLock()
 	defer d.mu.RUnlock()

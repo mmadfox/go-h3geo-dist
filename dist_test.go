@@ -138,6 +138,16 @@ func TestDistributed_EachCell(t *testing.T) {
 	}
 }
 
+func TestDistributed_IsOwned(t *testing.T) {
+	h3dist, _ := New(Level1, WithVNodes(3))
+	_ = h3dist.Add("127.0.0.1")
+	want := h3.FromString("821fa7fffffffff")
+	dcell, _ := h3dist.Lookup(want)
+	if !h3dist.IsOwned(dcell) {
+		t.Fatalf("h3dist.IsOwned(%v) => false, expected true", dcell)
+	}
+}
+
 func TestDefault(t *testing.T) {
 	h3dist, _ := New(Level1, WithVNodes(3))
 
