@@ -1,6 +1,6 @@
 # H3-geo distributed cells 
 
-Distribution of [Uber H3geo](https://github.com/con) cells by nodes 
+Distribution of [Uber H3geo](https://h3geo.org/) cells by nodes 
 
 Install
 -------
