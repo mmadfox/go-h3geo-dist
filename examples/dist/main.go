@@ -1,18 +1,3 @@
-# H3-geo distributed cells 
-
-Distribution of [Uber H3geo](https://github.com/con) cells by nodes 
-
-Install
--------
-With a correctly configured Go env:
-
-```
-go get github.com/mmadfox/go-h3geo-dist
-```
-
-Examples
---------
-```go
 package main
 
 import (
@@ -54,4 +39,3 @@ func main() {
 	h3dist.Remove("127.0.0.2")
 	h3dist.Remove("127.0.0.3")
 }
-```
