@@ -3,7 +3,7 @@ package h3geodist
 const (
 	DefaultReplicationFactor = 9
 	DefaultLoadFactor        = 1.25
-	DefaultVNodes            = 256
+	DefaultVNodes            = 64
 	DefaultLevel             = 5
 )
 

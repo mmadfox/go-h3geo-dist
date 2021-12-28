@@ -78,3 +78,62 @@ func TestDistributed_Remove(t *testing.T) {
 		t.Fatalf("have %d, want %d", have, want)
 	}
 }
+
+func TestDistributed_LookupMany(t *testing.T) {
+	h3dist, err := New(Level3,
+		WithVNodes(9),
+		WithReplicationFactor(9),
+		WithLoadFactor(2),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for vn := uint64(0); vn < h3dist.VNodes(); vn++ {
+		addr := fmt.Sprintf("host-%d.com", vn)
+		if err := h3dist.Add(addr); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var found int
+	h3dist.LookupMany([]h3.H3Index{
+		h3.FromString("821fa7fffffffff"),
+		h3.FromString("821f9ffffffffff"),
+		h3.FromString("81973ffffffffff"),
+		h3.FromString("81f07ffffffffff"),
+	}, func(c Cell) bool {
+		found++
+		return true
+	})
+	if have, want := found, 4; have != want {
+		t.Fatalf("have %d, want %d num of cell", have, want)
+	}
+}
+
+func TestDistributed_EachCell(t *testing.T) {
+	h3dist, err := New(Level3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for vn := uint64(0); vn < h3dist.VNodes(); vn++ {
+		addr := fmt.Sprintf("host-%d.com", vn)
+		if err := h3dist.Add(addr); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	stats := make(map[string]int)
+	h3dist.EachCell(func(c Cell) {
+		stats[c.Host]++
+	})
+	var total int
+	for host, counter := range stats {
+		t.Logf("host=%s, counter=%d", host, counter)
+		total += counter
+	}
+	if have, want := uint(total), Level3Area(); have != want {
+		t.Fatalf("have %d, want %d num of cell", have, want)
+	}
+}
