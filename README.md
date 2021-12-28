@@ -2,6 +2,10 @@
 
 Distribution of [Uber H3geo](https://h3geo.org/) cells by nodes 
 
+Prerequisites
+-------
+[H3-Go requires CGO ](https://github.com/uber/h3-go#prerequisites)
+
 Install
 -------
 With a correctly configured Go env:
