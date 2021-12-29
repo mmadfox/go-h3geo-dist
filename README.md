@@ -1,5 +1,8 @@
 # H3-geo distributed cells 
 
+[![Documentation](https://godoc.org/github.com/mmadfox/go-h3geo-dist?status.svg)](https://pkg.go.dev/github.com/mmadfox/go-h3geo-dist)
+
+
 Distribution of [Uber H3geo](https://h3geo.org/) cells by nodes 
 
 Prerequisites
