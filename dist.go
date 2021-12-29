@@ -88,7 +88,7 @@ func (d *Distributed) NumReplica() int {
 	return d.replFactor
 }
 
-// Stats returns load distribution of nodes.
+// Stats returns load distribution by nodes.
 func (d *Distributed) Stats() []NodeInfo {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
