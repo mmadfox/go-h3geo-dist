@@ -143,6 +143,38 @@ func (d *Distributed) IsOwned(c Cell) bool {
 	return addr == c.Host
 }
 
+// WhereIsMyParent finds and returns parent distributed cell.
+// The child object must be less resolution than the parent's parent.
+func (d *Distributed) WhereIsMyParent(child h3.H3Index) (c Cell, err error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	curLevel := h3.Resolution(child)
+	if curLevel < d.level {
+		return c, fmt.Errorf("h3geodist: child resolution got %d, expected > %d",
+			curLevel, d.level)
+	}
+	cell := h3.ToParent(child, d.level)
+	addr, ok := d.lookup(cell)
+	if !ok {
+		return c, fmt.Errorf("h3geodist: distributed cell %v not found", cell)
+	}
+	c.H3ID = cell
+	c.Host = addr
+	return
+}
+
+// LookupFromLatLon returns distributed cell.
+func (d *Distributed) LookupFromLatLon(lat float64, lon float64) (c Cell, err error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	cell := h3.FromGeo(h3.GeoCoord{Latitude: lat, Longitude: lon}, d.level)
+	addr, ok := d.lookup(cell)
+	if !ok {
+		return c, fmt.Errorf("h3geodist: distributed cell %v not found", cell)
+	}
+	return Cell{H3ID: cell, Host: addr}, nil
+}
+
 // ReplicaFor returns a list of hosts for replication.
 func (d *Distributed) ReplicaFor(cell h3.H3Index, n int) ([]string, error) {
 	d.mu.RLock()

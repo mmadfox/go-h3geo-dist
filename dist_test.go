@@ -241,6 +241,57 @@ func TestDistributed_Stats(t *testing.T) {
 	}
 }
 
+func TestDistributed_LookupFromLatLon(t *testing.T) {
+	h3dist, err := New(Level3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h3dist.Add("127.0.0.1"); err != nil {
+		t.Fatal(err)
+	}
+	dcell, err := h3dist.LookupFromLatLon(42.9269778, -72.2796935)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if have, want := dcell.Host, "127.0.0.1"; have != want {
+		t.Fatalf("have %s, want %s", have, want)
+	}
+}
+
+func TestDistributed_WhereIsMyParent(t *testing.T) {
+	h3dist, err := New(Level3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_ = h3dist.Add("127.0.0.1")
+
+	childLevel3 := h3.FromString("83821cfffffffff")
+	dcell0, err := h3dist.WhereIsMyParent(childLevel3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if have, want := dcell0.Host, "127.0.0.1"; have != want {
+		t.Fatalf("have %s, want %s", have, want)
+	}
+
+	childLevel4 := h3.FromString("8482111ffffffff")
+	dcell1, err := h3dist.WhereIsMyParent(childLevel4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if have, want := dcell1.Host, "127.0.0.1"; have != want {
+		t.Fatalf("have %s, want %s", have, want)
+	}
+
+	// child res > parent res
+	childLevel1 := h3.FromString("81757ffffffffff")
+	_, err = h3dist.WhereIsMyParent(childLevel1)
+	if err == nil {
+		t.Fatalf("have nil, expected error")
+	}
+}
+
 func TestDefault(t *testing.T) {
 	h3dist, _ := New(Level1, WithVNodes(3))
 
