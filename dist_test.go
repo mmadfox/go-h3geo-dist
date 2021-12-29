@@ -8,6 +8,52 @@ import (
 	"github.com/uber/h3-go/v3"
 )
 
+func TestNew(t *testing.T) {
+	_, err := New(Level6 + 10)
+	if err == nil {
+		t.Fatal("got nil, expected error")
+	}
+}
+
+func TestDistributed_NumReplica(t *testing.T) {
+	h3dist := Default()
+	if have, want := h3dist.NumReplica(), DefaultReplicationFactor; have != want {
+		t.Fatalf("have %d, want %d", have, want)
+	}
+	h3dist, err := New(Level5,
+		WithReplicationFactor(10),
+		WithVNodes(1024),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if have, want := h3dist.NumReplica(), 10; have != want {
+		t.Fatalf("have %d, want %d number of replicas", have, want)
+	}
+	if have, want := h3dist.VNodes(), uint64(1024); have != want {
+		t.Fatalf("have %d, want %d number of vnodes", have, want)
+	}
+}
+
+func TestDistributed_VNodeIndex(t *testing.T) {
+	h3dist, err := New(Level1, WithVNodes(9))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_ = h3dist.Add("127.0.0.1")
+	_ = h3dist.Add("127.0.0.2")
+	_ = h3dist.Add("127.0.0.3")
+	_ = h3dist.Add("127.0.0.4")
+
+	Iter(Level1, func(_ uint, cell h3.H3Index) {
+		index := h3dist.VNodeIndex(cell)
+		if index > 8 {
+			t.Fatalf("have %d, want [0-9]", index)
+		}
+	})
+}
+
 func TestDistributed_Add(t *testing.T) {
 	h3dist, err := New(Level3)
 	if err != nil {
@@ -165,6 +211,33 @@ func TestDistributed_ReplicaFor(t *testing.T) {
 	_, err = h3dist.ReplicaFor(cell, 10)
 	if err == nil {
 		t.Fatalf("have nil, want error")
+	}
+}
+
+func TestDistributed_IsEmpty(t *testing.T) {
+	h3dist := Default()
+	if !h3dist.IsEmpty() {
+		t.Fatalf("have false, want true")
+	}
+}
+
+func TestDistributed_Stats(t *testing.T) {
+	h3dist := Default()
+	numNodes := 10
+	for i := 0; i < numNodes; i++ {
+		if err := h3dist.Add(fmt.Sprintf("host-%d.com", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stats := h3dist.Stats()
+	var load float64
+	var counter int
+	for _, info := range stats {
+		counter++
+		load += info.Load
+	}
+	if have, want := h3dist.AvgLoad(), load/float64(counter)*DefaultLoadFactor; have != want {
+		t.Fatalf("have %f, want %f", have, want)
 	}
 }
 
