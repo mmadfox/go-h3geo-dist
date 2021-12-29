@@ -11,8 +11,13 @@ import (
 	"github.com/uber/h3-go/v3"
 )
 
+// ErrNoSlots means that the number of virtual nodes is distributed by 100%.
+// It is necessary to change the configuration of virtual nodes.
 var ErrNoSlots = errors.New("h3geodist: no distribute slots")
 
+// Distributed holds information about nodes,
+// and scheduler of virtual nodes with replicas.
+// Thread-safe.
 type Distributed struct {
 	mu         sync.RWMutex
 	replFactor int
@@ -26,20 +31,31 @@ type Distributed struct {
 	stats      map[string]float64
 }
 
+// Cell is a type to represent a distributed cell
+// with specifying the hostname and H3 index.
 type Cell struct {
 	H3ID h3.H3Index
 	Host string
+}
+
+// NodeInfo is a type to represent a node load statistic.
+type NodeInfo struct {
+	Host string
+	Load float64
 }
 
 type node struct {
 	addr string
 }
 
+// Default creates and returns a new Distributed instance with level - Level5.
 func Default() *Distributed {
-	dist, _ := New(DefaultLevel)
+	dist, _ := New(Level5)
 	return dist
 }
 
+// New creates and returns a new Distributed instance
+// with specified cell level and options.
 func New(cellLevel int, opts ...Option) (*Distributed, error) {
 	if ok := validateLevel(cellLevel); !ok {
 		return nil, fmt.Errorf("h3geodist: unsupported level - got %d, expected [%d-%d]",
@@ -60,30 +76,38 @@ func New(cellLevel int, opts ...Option) (*Distributed, error) {
 	return h3dist, nil
 }
 
+// IsEmpty returns TRUE if the nodes list are empty, otherwise FALSE.
 func (d *Distributed) IsEmpty() bool {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	return len(d.nodes) == 0
 }
 
+// NumReplica returns number of replicas.
 func (d *Distributed) NumReplica() int {
 	return d.replFactor
 }
 
-func (d *Distributed) Stats() map[string]float64 {
+// Stats returns load distribution of nodes.
+func (d *Distributed) Stats() []NodeInfo {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	stats := make(map[string]float64)
-	for member, load := range d.stats {
-		stats[member] = load
+	stats := make([]NodeInfo, 0, len(d.stats))
+	for host, load := range d.stats {
+		stats = append(stats, NodeInfo{
+			Host: host,
+			Load: load,
+		})
 	}
 	return stats
 }
 
+// VNodes returns number of virtual nodes.
 func (d *Distributed) VNodes() uint64 {
 	return d.vnodes
 }
 
+// Nodes returns a list of nodes.
 func (d *Distributed) Nodes() []string {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
@@ -94,6 +118,7 @@ func (d *Distributed) Nodes() []string {
 	return nodes
 }
 
+// Lookup returns distributed cell.
 func (d *Distributed) Lookup(cell h3.H3Index) (Cell, bool) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
@@ -107,6 +132,7 @@ func (d *Distributed) Lookup(cell h3.H3Index) (Cell, bool) {
 	return Cell{H3ID: cell, Host: addr}, true
 }
 
+// IsOwned сhecks if the host for a distributed cell has changed.
 func (d *Distributed) IsOwned(c Cell) bool {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
@@ -117,6 +143,7 @@ func (d *Distributed) IsOwned(c Cell) bool {
 	return addr == c.Host
 }
 
+// ReplicaFor returns a list of hosts for replication.
 func (d *Distributed) ReplicaFor(cell h3.H3Index, n int) ([]string, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
@@ -163,6 +190,7 @@ func (d *Distributed) ReplicaFor(cell h3.H3Index, n int) ([]string, error) {
 	return res, nil
 }
 
+// LookupMany returns a list of distributed cell.
 func (d *Distributed) LookupMany(cell []h3.H3Index, iter func(c Cell) bool) bool {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
@@ -181,11 +209,13 @@ func (d *Distributed) LookupMany(cell []h3.H3Index, iter func(c Cell) bool) bool
 	return true
 }
 
+// VNodeIndex returns the index of the virtual node by H3Index.
 func (d *Distributed) VNodeIndex(cell h3.H3Index) int {
 	hashKey := uint2hash(uint64(cell))
 	return int(hashKey % d.vnodes)
 }
 
+// EachCell iterate each distributed cell, calling fn for each cell.
 func (d *Distributed) EachCell(iter func(c Cell)) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
@@ -201,6 +231,7 @@ func (d *Distributed) EachCell(iter func(c Cell)) {
 	})
 }
 
+// Add adds a new node.
 func (d *Distributed) Add(addr string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -213,6 +244,7 @@ func (d *Distributed) Add(addr string) error {
 	return d.distribute()
 }
 
+// Remove removes a node.
 func (d *Distributed) Remove(addr string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -275,6 +307,7 @@ func (d *Distributed) distribute() error {
 	return nil
 }
 
+// AvgLoad returns the average load.
 func (d *Distributed) AvgLoad() float64 {
 	if len(d.nodes) == 0 {
 		return 0
