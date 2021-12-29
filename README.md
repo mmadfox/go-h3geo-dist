@@ -1,7 +1,7 @@
 # H3-geo distributed cells 
 
 [![Documentation](https://godoc.org/github.com/mmadfox/go-h3geo-dist?status.svg)](https://pkg.go.dev/github.com/mmadfox/go-h3geo-dist)
-[![Coverage Status](https://coveralls.io/repos/github/mmadfox/go-h3geo-dist/badge.svg?branch=main)](https://coveralls.io/github/mmadfox/go-h3geo-dist?branch=main)
+[![Coverage Status](https://coveralls.io/repos/github/mmadfox/go-h3geo-dist/badge.svg?branch=main)](https://coveralls.io/github/mmadfox/go-h3geo-dist?branch=main&1)
 
 Distribution of [Uber H3geo](https://h3geo.org/) cells by nodes 
 
