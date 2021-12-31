@@ -33,10 +33,20 @@ func main() {
 			neighbor0 := neighbors[0]
 			neighbor1 := neighbors[1]
 
-			fmt.Printf("targetHost=%s\ntargetCell=%s\nneighbors=[%s,%s]\n--\n",
-				target.Host, target.HexID(), neighbor0.Cell.HexID(), neighbor1.Cell.HexID())
+			fmt.Printf("host=%s\ncurrent=%s\nfrom=%s - %.2f%s \n--\n",
+				target.Host,
+				target.HexID(),
+				neighbor0.Cell.HexID(),
+				toPercent(neighbor0.DistanceM, neighbor1.DistanceM), "%")
 		}
 	}
+}
+
+func toPercent(v1, v2 float64) float64 {
+	if v2 == 0 || v1 == 0 {
+		return 0
+	}
+	return ((v2 - v1) / v2) * 100
 }
 
 func coordsFromString(s string) [][2]float64 {
