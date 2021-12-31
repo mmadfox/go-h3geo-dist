@@ -258,6 +258,36 @@ func TestDistributed_LookupFromLatLon(t *testing.T) {
 	}
 }
 
+func TestDistributed_NeighborsFromLatLon(t *testing.T) {
+	h3dist, err := New(Level6, WithVNodes(1024))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_ = h3dist.Add("127.0.0.1")
+	_ = h3dist.Add("127.0.0.2")
+	_ = h3dist.Add("127.0.0.3")
+	_ = h3dist.Add("127.0.0.5")
+	_ = h3dist.Add("127.0.0.6")
+
+	target, neighbors, err := h3dist.NeighborsFromLatLon(42.9284783, -72.2776111)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if have, want := target.Host, "127.0.0.6"; have != want {
+		t.Fatalf("have %s, want %s", have, want)
+	}
+	if len(neighbors) != 6 {
+		t.Fatalf("have %d, want 6 neighbors", len(neighbors))
+	}
+	winner0 := neighbors[0]
+	winner1 := neighbors[1]
+	if winner0.DistanceM > winner1.DistanceM {
+		t.Fatalf("winner0.DistanceM > winner1.DistanceM")
+	}
+}
+
 func TestDistributed_WhereIsMyParent(t *testing.T) {
 	h3dist, err := New(Level3)
 	if err != nil {

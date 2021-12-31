@@ -11,9 +11,14 @@ import (
 	"github.com/uber/h3-go/v3"
 )
 
-// ErrNoSlots means that the number of virtual nodes is distributed by 100%.
-// It is necessary to change the configuration of virtual nodes.
-var ErrNoSlots = errors.New("h3geodist: no distribute slots")
+var (
+	// ErrNoSlots means that the number of virtual nodes is distributed by 100%.
+	// It is necessary to change the configuration of virtual nodes.
+	ErrNoSlots = errors.New("h3geodist: no distribute slots")
+
+	// ErrVNodes returns when there are no virtual nodes.
+	ErrVNodes = errors.New("h3geodist: vnodes not found")
+)
 
 // Distributed holds information about nodes,
 // and scheduler of virtual nodes with replicas.
@@ -32,10 +37,18 @@ type Distributed struct {
 }
 
 // Cell is a type to represent a distributed cell
-// with specifying the hostname and H3 index.
+// with specifying the hostname and H3 Index.
 type Cell struct {
 	H3ID h3.H3Index
 	Host string
+}
+
+func (c Cell) String() string {
+	return fmt.Sprintf("Cell{Host: %s, ID: %s}", c.Host, h3.ToString(c.H3ID))
+}
+
+func (c Cell) HexID() string {
+	return h3.ToString(c.H3ID)
 }
 
 // NodeInfo is a type to represent a node load statistic.
@@ -156,7 +169,7 @@ func (d *Distributed) WhereIsMyParent(child h3.H3Index) (c Cell, err error) {
 	cell := h3.ToParent(child, d.level)
 	addr, ok := d.lookup(cell)
 	if !ok {
-		return c, fmt.Errorf("h3geodist: distributed cell %v not found", cell)
+		return c, ErrVNodes
 	}
 	c.H3ID = cell
 	c.Host = addr
@@ -170,9 +183,52 @@ func (d *Distributed) LookupFromLatLon(lat float64, lon float64) (c Cell, err er
 	cell := h3.FromGeo(h3.GeoCoord{Latitude: lat, Longitude: lon}, d.level)
 	addr, ok := d.lookup(cell)
 	if !ok {
-		return c, fmt.Errorf("h3geodist: distributed cell %v not found", cell)
+		return c, ErrVNodes
 	}
 	return Cell{H3ID: cell, Host: addr}, nil
+}
+
+// Neighbor is a type for represent a neighbor distributed cell,
+// with the distance from a target point to the center of each neighbor.
+type Neighbor struct {
+	Cell      Cell
+	DistanceM float64
+}
+
+// NeighborsFromLatLon returns the current distributed cell
+// for a geographic coordinate and neighbors sorted by distance in descending order.
+// Distance is measured from geographic coordinates to the center of each neighbor.
+func (d *Distributed) NeighborsFromLatLon(lat float64, lon float64) (target Cell, neighbors []Neighbor, err error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	src := h3.GeoCoord{Latitude: lat, Longitude: lon}
+	cell := h3.FromGeo(src, d.level)
+	addr, ok := d.lookup(cell)
+	if !ok {
+		return target, nil, ErrVNodes
+	}
+	target.Host = addr
+	target.H3ID = cell
+	ring := h3.KRing(cell, 1)
+	neighbors = make([]Neighbor, 0, len(ring))
+	for i := 0; i < len(ring); i++ {
+		if !h3.AreNeighbors(cell, ring[i]) {
+			continue
+		}
+		addr, ok := d.lookup(ring[i])
+		if !ok {
+			continue
+		}
+		dest := h3.ToGeo(ring[i])
+		neighbors = append(neighbors, Neighbor{
+			Cell:      Cell{Host: addr, H3ID: ring[i]},
+			DistanceM: h3.PointDistM(src, dest),
+		})
+	}
+	sort.Slice(neighbors, func(i, j int) bool {
+		return neighbors[i].DistanceM < neighbors[j].DistanceM
+	})
+	return
 }
 
 // ReplicaFor returns a list of hosts for replication.
@@ -189,7 +245,7 @@ func (d *Distributed) ReplicaFor(cell h3.H3Index, n int) ([]string, error) {
 	var next int
 	myaddr, ok := d.lookup(cell)
 	if !ok {
-		return nil, fmt.Errorf("h3geodist: vnode for cell %v not found", cell)
+		return nil, ErrVNodes
 	}
 	keys := make([]uint64, 0, 4)
 	hosts := make(map[uint64]*node)
@@ -241,7 +297,7 @@ func (d *Distributed) LookupMany(cell []h3.H3Index, iter func(c Cell) bool) bool
 	return true
 }
 
-// VNodeIndex returns the index of the virtual node by H3Index.
+// VNodeIndex returns the Index of the virtual node by H3Index.
 func (d *Distributed) VNodeIndex(cell h3.H3Index) int {
 	hashKey := uint2hash(uint64(cell))
 	return int(hashKey % d.vnodes)
