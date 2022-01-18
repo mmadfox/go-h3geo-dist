@@ -5,6 +5,11 @@ import (
 	"hash/fnv"
 )
 
+// ToHash returns the fvn.Hash64 hash sum from uint64 value.
+func ToHash(val uint64) uint64 {
+	return uint2hash(val)
+}
+
 func str2hash(val string) uint64 {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(val))
