@@ -303,6 +303,34 @@ func (d *Distributed) VNodeIndex(cell h3.H3Index) int {
 	return int(hashKey % d.vnodes)
 }
 
+// EachVNode iterate each vnode, calling fn for each vnode.
+func (d *Distributed) EachVNode(fn func(vnode uint64, addr string) bool) {
+	for i := uint64(0); i < d.vnodes; i++ {
+		addr, ok := d.Addr(i)
+		if !ok {
+			continue
+		}
+		if !fn(i, addr) {
+			break
+		}
+	}
+}
+
+// Addr returns the addr of the node by vnode id.
+func (d *Distributed) Addr(vnode uint64) (addr string, ok bool) {
+	hashKey := uint2hash(vnode)
+	idx := int(hashKey % d.vnodes)
+	d.mu.RLock()
+	node, found := d.index[idx]
+	d.mu.RUnlock()
+	if !found {
+		return
+	}
+	addr = node.addr
+	ok = true
+	return
+}
+
 // EachCell iterate each distributed cell, calling fn for each cell.
 func (d *Distributed) EachCell(iter func(c Cell)) {
 	d.mu.RLock()

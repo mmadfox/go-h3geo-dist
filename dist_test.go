@@ -288,6 +288,66 @@ func TestDistributed_NeighborsFromLatLon(t *testing.T) {
 	}
 }
 
+func TestDistributed_EachVNode(t *testing.T) {
+	h3dist, err := New(Level3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hosts := []string{
+		"127.0.0.1",
+		"127.0.0.2",
+		"127.0.0.3",
+	}
+	for _, host := range hosts {
+		_ = h3dist.Add(host)
+	}
+	stats := make(map[string]int)
+
+	h3dist.EachVNode(func(id uint64, addr string) bool {
+		stats[addr]++
+		return true
+	})
+	for _, host := range hosts {
+		counter := stats[host]
+		if counter == 0 {
+			t.Fatalf("have %d, want > 0", counter)
+		}
+	}
+}
+
+func TestDistributed_Addr(t *testing.T) {
+	h3dist, err := New(Level3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hosts := []string{
+		"127.0.0.1",
+		"127.0.0.2",
+		"127.0.0.3",
+	}
+	for _, host := range hosts {
+		_ = h3dist.Add(host)
+	}
+
+	stats := make(map[string]int)
+	for i := uint64(0); i < h3dist.VNodes(); i++ {
+		addr, ok := h3dist.Addr(i)
+		if !ok {
+			continue
+		}
+		stats[addr]++
+	}
+
+	for _, host := range hosts {
+		counter := stats[host]
+		if counter == 0 {
+			t.Fatalf("have %d, want > 0", counter)
+		}
+	}
+}
+
 func TestDistributed_WhereIsMyParent(t *testing.T) {
 	h3dist, err := New(Level3)
 	if err != nil {
